@@ -1,46 +1,24 @@
-# WardWard's Trade Mining Rewards
+# WardWard's Trade Mining Rewards Project
 
-This project is for the CE/CZ4153 Blockchain Technology course offered at the School of Computer Science and Engineering, Nanyang Technological University, Singapore.
+This project is for the CE/CZ4153 Blockchain Technology course offered during AY21/22 Semester 1 at the School of Computer Science and Engineering, Nanyang Technological University, Singapore.
 
-The project comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts. It also comes with a variety of other tools, preconfigured to work with the project code.
+## Project Details
 
-Try running some of the following tasks:
+**Project Summary:**
+For each trade a user does on Pendle’s AMM, he is entitled to retroactively receive some PENDLE rewards.
 
-```shell
-npx hardhat accounts
-npx hardhat compile
-npx hardhat clean
-npx hardhat test
-npx hardhat node
-npx hardhat help
-REPORT_GAS=true npx hardhat test
-npx hardhat coverage
-npx hardhat run scripts/deploy.ts
-TS_NODE_FILES=true npx ts-node scripts/deploy.ts
-npx eslint '**/*.{js,ts}'
-npx eslint '**/*.{js,ts}' --fix
-npx prettier '**/*.{json,sol,md}' --check
-npx prettier '**/*.{json,sol,md}' --write
-npx solhint 'contracts/**/*.sol'
-npx solhint 'contracts/**/*.sol' --fix
-```
+**Background & Problem Statement:**
+Trade mining works by distributing PENDLE tokens to users for each transaction they make on Pendle’s AMM. One of the biggest issues faced by users trading on DEXs like Uniswap today are the gas fees for each transaction. And lately, there has been an obscene amount up to 200 gwei or greater in average daily gas prices. 
+The key benefit of Trade Mining is that it gives users the ability to offset their transaction fees by earning through trade mining rewards, which can easily trade into other cryptos or stablecoins at the user’s discretion, or they can stake it further in Pendle SingleStaking pool or other Pendle staking pools.
+It is more efficient to calculate the retroactive rewards off-chain, and have some form of distribution mechanism on-chain.
 
-# Etherscan verification
+**Feature Requirements:**
+Create a new TradeMiningRewards contract that can retroactively distribute rewards to trade mining participants of a Pendle Market. In addition, the contract must have the following features:
+- A way to verify the trade mining incentive recipient list and recipient amount.
+- A way for incentive recipients to claim their rewards.
+- A trade mining epoch of every 2 weeks, where rewards are calculated over an epoch. \
+Bonuses / Nice to haves:
+- A sound trade mining reward mechanism design and gas-optimized distribution method.
+-	Documentation of the TradiningMiningReward contract’s specs.
+-	Tests must be written in Typescript.
 
-To try out Etherscan verification, you first need to deploy a contract to an Ethereum network that's supported by Etherscan, such as Ropsten.
-
-In this project, copy the .env.example file to a file named .env, and then edit it to fill in the details. Enter your Etherscan API key, your Ropsten node URL (eg from Alchemy), and the private key of the account which will send the deployment transaction. With a valid .env file in place, first deploy your contract:
-
-```shell
-hardhat run --network ropsten scripts/sample-script.ts
-```
-
-Then, copy the deployment address and paste it in to replace `DEPLOYED_CONTRACT_ADDRESS` in this command:
-
-```shell
-npx hardhat verify --network ropsten DEPLOYED_CONTRACT_ADDRESS "Hello, Hardhat!"
-```
-
-# Performance optimizations
-
-For faster runs of your tests and scripts, consider skipping ts-node's type checking by setting the environment variable `TS_NODE_TRANSPILE_ONLY` to `1` in hardhat's environment. For more details see [the documentation](https://hardhat.org/guides/typescript.html#performance-optimizations).
