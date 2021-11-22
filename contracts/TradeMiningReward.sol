@@ -8,7 +8,9 @@ contract TradeMiningReward is Ownable{
 
     using SafeMath for uint;
     uint rewardPerc; 
-    uint totalPerc;
+    uint gasFee;
+    // fix gasFee to not encourage frontrunning by setting high gasfee and expect return from it also swap gas used is quite predictable
+
     struct rewardToken{
         uint amount;
         uint time;
@@ -16,7 +18,7 @@ contract TradeMiningReward is Ownable{
     //indexed for external to search for specific address event
     event TradeRewards(uint time, address indexed from, uint amount);
     event CollectableReward(address from, uint amount);
-    event lockedReward(address indexed from, uint amount);
+    event LockedReward(address indexed from, uint amount);
     mapping (address => uint) lockedRewards;// locked allocated reward
     mapping (address => uint) unlockedRewards; // collectable reward
 
@@ -25,26 +27,46 @@ contract TradeMiningReward is Ownable{
     mapping (address => uint) rewardAvilable; //reward available to collect
     rewardToken[] public rewardtokens;
     constructor(){
-        rewardPerc = 1; //set to 0.1%
+        rewardPerc = 400; //set to 40%, 1 = 0.1%
+        gasFee = 50000; // assuming avg gas price is 100 wei * 500 gas for typical swap operation
     } 
-    function allocateRewards(address from, uint amount, uint basicPerc, uint stakePerc) public{ // gas fee * (basic + stake), allocate locked rewards after swap function
+    function allocateRewards(address from, uint amount, uint basicPerc, uint stakePerc) external{ // gas fee * (basic + stake), allocate locked rewards after swap function
         if(stakePerc >= 2000){ // if stake more than 2000 token
             basicPerc = basicPerc.add(100); // basic + stake
         }
         require(basicPerc <= 1000, "No more than 100%");
         amount = amount.mul(basicPerc); // gas fee * (basic + stake)
         lockedRewards[from] = lockedRewards[from].add(amount);
-        emit lockedReward(from, lockedRewards[from]);
+        emit LockedReward(from, lockedRewards[from]);
     }
 
-    function claimableRewards(address from) public{ // allocate all lock to unlock
-        require(lockedRewards[from] > 0, "More than 0 to allocate claimable");
+    function claimableRewards(address from) external{ // allocate all lock to unlock
+        require(lockedRewards[from] > 0, "Less than 0, can't claim");
         unlockedRewards[from] = unlockedRewards[from].add(lockedRewards[from]);
         lockedRewards[from] = 0; // reset to 0 value
+        emit CollectableReward(from, unlockedRewards[from]);
     }
 
-    
-    function getRewards(address from,uint _amount) internal{   //record rewards to user
+    function viewClaimable(address from) external view returns(uint){// external function call this to get claimble reward then xfer to user
+        return unlockedRewards[from];
+    }
+
+    function setRewardPerc(uint newPerc)public onlyOwner{ //only owner can set %
+        require(newPerc <= 1000, "No more than 100%");
+        rewardPerc = newPerc;
+    }
+
+    function setGasPrice(uint newFee)public onlyOwner{ //only owner can set gas price
+        require(newFee >= 500, "Minimum Gas Fee is 1"); // 1 wei * 500 gas used = 500
+        require(newFee <= 250000, "Gas Fee too high"); // 500 wei * 500 gas used = 250000
+        gasFee = newFee;
+    }
+
+
+
+
+
+    function getRewards(address from,uint _amount) internal{ //record rewards to user
         require(_amount > 0, "No reward to record");
         ownerRewards[from].push(rewardToken(_amount, block.timestamp));
         rewardCount[from] = rewardCount[from].add(1);
@@ -84,9 +106,6 @@ contract TradeMiningReward is Ownable{
         return gasPrice.mul(gasleft());
     }
 
-    function setRewardPerc(uint newPerc)public onlyOwner{ //only owner can set %
-        require(newPerc <= 1000, "No more than 100%");
-        rewardPerc = newPerc;
-    }
+
 
 }
