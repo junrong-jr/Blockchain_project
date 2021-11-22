@@ -8,6 +8,7 @@ contract TradeMiningReward is Ownable{
 
     using SafeMath for uint;
     uint rewardPerc; 
+    uint totalPerc;
     struct rewardToken{
         uint amount;
         uint time;
@@ -15,15 +16,34 @@ contract TradeMiningReward is Ownable{
     //indexed for external to search for specific address event
     event TradeRewards(uint time, address indexed from, uint amount);
     event CollectableReward(address from, uint amount);
-    
+    event lockedReward(address indexed from, uint amount);
+    mapping (address => uint) lockedRewards;// locked allocated reward
+    mapping (address => uint) unlockedRewards; // collectable reward
+
     mapping (address => rewardToken[]) public ownerRewards; // address1 => [struct1, struct2]
     mapping (address => uint) rewardCount;  //keep track of rewards quantity
     mapping (address => uint) rewardAvilable; //reward available to collect
     rewardToken[] public rewardtokens;
     constructor(){
         rewardPerc = 1; //set to 0.1%
+    } 
+    function allocateRewards(address from, uint amount, uint basicPerc, uint stakePerc) public{ // gas fee * (basic + stake), allocate locked rewards after swap function
+        if(stakePerc >= 2000){ // if stake more than 2000 token
+            basicPerc = basicPerc.add(100); // basic + stake
+        }
+        require(basicPerc <= 1000, "No more than 100%");
+        amount = amount.mul(basicPerc); // gas fee * (basic + stake)
+        lockedRewards[from] = lockedRewards[from].add(amount);
+        emit lockedReward(from, lockedRewards[from]);
     }
 
+    function claimableRewards(address from) public{ // allocate all lock to unlock
+        require(lockedRewards[from] > 0, "More than 0 to allocate claimable");
+        unlockedRewards[from] = unlockedRewards[from].add(lockedRewards[from]);
+        lockedRewards[from] = 0; // reset to 0 value
+    }
+
+    
     function getRewards(address from,uint _amount) internal{   //record rewards to user
         require(_amount > 0, "No reward to record");
         ownerRewards[from].push(rewardToken(_amount, block.timestamp));
@@ -57,6 +77,8 @@ contract TradeMiningReward is Ownable{
     function collectableRewards(address from)public view returns(uint){
         return rewardAvilable[from];
     }
+
+
     // for web3 call to input gasprice
     function gasUsed(uint gasPrice)public view returns (uint){
         return gasPrice.mul(gasleft());
