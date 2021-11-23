@@ -14,7 +14,7 @@ contract Ownable
   }
 
   modifier onlyOwner() {
-    require(isOwner(), "Function accessible only by the owner !!");
+    require(isOwner(), "Accessible only by the owner !!");
     _;
   }
 
