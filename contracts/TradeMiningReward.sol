@@ -1,10 +1,10 @@
 //SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-//kovan testnet
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+
 import "../contracts/Ownable.sol";
 import "hardhat/console.sol";
 //npm install @openzeppelin/contracts
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 //npm add @uniswap/v3-periphery
@@ -31,167 +31,130 @@ contract TradeMiningReward is Ownable{
     using SafeMath for uint;
 
     uint private rewardPerc; 
-    uint private gasFee;
+    uint private txGasUnit;
+    uint public gasFee;
     uint public ethPrice = 0;
+    uint public timePeriod = 4 seconds; // set to 2 weeks, 4 sec for debugging
     IERC20 daiToken = IERC20(daiAddress);
     DepositableERC20 wethToken = DepositableERC20(wethAddress);
     IQuoter quoter = IQuoter(uinswapV3QuoterAddress);
     IUniswapRouter uniswapRouter = IUniswapRouter (uinswapV3RouterAddress);
 
 
-    // fix gasFee to not encourage frontrunning by setting high gasfee and expect return from it also swap gas used is quite predictable
-
-
+    // fix gasFee to  discourage frontrunning, if user set high gasfee and expect return from it also swap gas used is quite predictable
     //indexed for external to search for specific address event
     
-    event CollectableReward(address from, uint amount);
-    event LockedReward(address indexed from, uint amount);
+    event RewardLog(address from, uint amount);
     event Log(string msg, uint ref);
     mapping (address => uint) lockedRewards;// locked allocated reward
     mapping (address => uint) unlockedRewards; // collectable reward
-
+    mapping (address => uint) nextClaimDate; // track whether user claimed when unlocked
     constructor(){
-        rewardPerc = 400; //set to 40%, 1 = 0.1%
-        gasFee = 50000; // assuming avg gas price is 100 wei * 500 gas for typical swap operation
+        rewardPerc = 40; //set to 40%, 1 = 1%
+        txGasUnit = 46666666666666; //(estimated gas used) avg transaction fee about 0.007 ether = 0.007e18 wei, assuming avg gas price is 150 wei then it is 46,666,666,666,667 gas used
     } 
 
-    //function gasfee to pendle(from,amount,basicperc,stakeprc) return (pendle token amount)
     //initial plan estimate all wei to pendle value and store it as pendle value, but it will be decimal
-    function allocateRewards(address from, uint amount, uint basicPerc, uint stakePerc) internal{ // gas fee * (basic + stake), allocate locked rewards after swap function
-        if(stakePerc >= 2000){ // if stake more than 2000 token
-            basicPerc = basicPerc.add(100); // basic + stake
+    /* ----------------------------------Main function------------------------------------------*/
+    function claimRewardsV2()public returns (uint){ // imitate function claimRewards
+        Claim();
+        uint amount = getUnlockedBalance().div(1000000 wei);
+        require(amount >0, "Nothing to claim");
+        clearUnlockReward();
+        console.log("Claimed ethers", amount);
+        return amount;
+    }
+
+    function swap(uint stakePerc, uint gasPrice) public{ //imitate swap function
+        //do magic swap
+        allocateRewards(stakePerc, gasPrice);// allocate reward
+        Claim();
+    }
+    
+    function Claim()public{ //user will call this function to claim all their unlockRewards
+        if(getClaimDate() <= block.timestamp){// set new nextClaimDate & move lock to unlock
+            lockToUnlock();
+            setClaimDate();
         }
-        require(basicPerc <= 1000, "No more than 100%");
-        amount = amount.mul(basicPerc); // gas fee * (basic + stake)
-        lockedRewards[from] = lockedRewards[from].add(amount); // value stored in wei
-        emit LockedReward(from, lockedRewards[from]);
     }
 
-    function claimableRewards(address from) external{ // allocate all lock to unlock
-        require(lockedRewards[from] > 0, "Less than 0, can't claim");
-        unlockedRewards[from] = unlockedRewards[from].add(lockedRewards[from]);
-        lockedRewards[from] = 0; // reset to 0 value
-        emit CollectableReward(from, unlockedRewards[from]);
+    // should be external since swap from other contract will call this function
+    function allocateRewards(uint stakePerc, uint gasPrice)public{ // gas fee * (basic + stake), allocate locked rewards after swap function
+        uint amount;
+        uint totalPerc = rewardPerc; 
+        updateGasFee(gasPrice);
+        if(getClaimDate() == 0){// check is it new user then set time for new user
+            setClaimDate();
+        }
+        require(getClaimDate() >0, "Require allocate of claim date");
+        if(stakePerc >= 2000){ // if stake more than 2000 token
+            totalPerc = rewardPerc.add(10); // basic + stake
+        }
+        require(totalPerc <= 100, "No more than 100%");
+        amount = gasFee.mul(totalPerc).div(100); // (gasPrice * txGasUnit) * (basic + stake)
+        lockedRewards[msg.sender] = lockedRewards[msg.sender].add(amount); // value stored in wei
+        emit RewardLog(msg.sender, lockedRewards[msg.sender]);
     }
 
-    function claimedRewards(address from) internal{
-        unlockedRewards[from] = 0;
-        require(unlockedRewards[from] == 0,"Reward not cleaned up");
+/* ----------------------------------Should be internal function, set to public for testing purpose------------------------------------------*/
+
+    // should be internal only called by claim
+    function lockToUnlock() public{ // allocate all lock to unlock, change to external if swap() is moved out
+        require(getClaimDate() < block.timestamp, "Still not unlockable");
+        require(lockedRewards[msg.sender] > 0, "Nothing to unlock");
+        unlockedRewards[msg.sender] = unlockedRewards[msg.sender].add(lockedRewards[msg.sender]);
+        lockedRewards[msg.sender] = 0; // reset to 0 value
+        emit RewardLog(msg.sender, unlockedRewards[msg.sender]);
     }
-    function viewlocked(address from) public view returns(uint){
-        return lockedRewards[from];
-    }
-    function viewClaimable(address from) public view returns(uint){// external function call this to get claimble reward then xfer to user
-        return unlockedRewards[from];
+    // should be internal only called by claimRewards
+    function clearUnlockReward() public{ //reward claimed, set unlockedRewards to 0
+        unlockedRewards[msg.sender] = 0;
+        require(unlockedRewards[msg.sender] == 0,"Reward not cleaned up");
+        emit RewardLog(msg.sender, unlockedRewards[msg.sender]);
     }
 
+    // should be internal only called when allocateRewards
+    function updateGasFee(uint gasPrice)public{ 
+        require(gasPrice > 0,"gas Price > 0");
+        gasFee = txGasUnit.mul(gasPrice);
+    }
+
+    function setClaimDate()public{ // set next claimable date after claimed
+        nextClaimDate[msg.sender] = block.timestamp.add(timePeriod);
+    }
+
+/* ----------------------------------Only owner function------------------------------------------*/
     function setRewardPerc(uint newPerc)public onlyOwner{ //only owner can set %
-        require(newPerc <= 1000, "No more than 100%");
+        require(newPerc <= 100, "No more than 100%");
         rewardPerc = newPerc;
     }
 
-    function setGasPrice(uint newFee)public onlyOwner{ //only owner can set gas price
-        require(newFee >= 500, "Minimum Gas Fee is 1"); // 1 wei * 500 gas used = 500
-        require(newFee <= 250000, "Gas Fee too high"); // 500 wei * 500 gas used = 250000
-        gasFee = newFee;
+    function setTxGasUnit(uint newGas)public onlyOwner{
+        txGasUnit = newGas;
+    }
+/* ----------------------------------All view function------------------------------------------*/
+    function getLockedBalance() public view returns(uint){
+        return lockedRewards[msg.sender];
     }
 
-
-    function getWethBalance() public view returns(uint) {
-        return wethToken.balanceOf(address(this));
+    function getUnlockedBalance() public view returns(uint){
+        return unlockedRewards[msg.sender];
     }
-    function updateEthPriceUniswap() public returns(uint) {
-        uint ethPriceRaw = quoter.quoteExactOutputSingle(daiAddress,wethAddress,3000,100000,0);
-        ethPrice = ethPriceRaw / 100000;
-        return ethPrice;
-    }
-    function claimRewards(address from) public { // convert wei to pendle(dai)
-        address recipient = address(this);
-        uint256 deadline = block.timestamp + 15;
-        uint256 amountOut = viewClaimable(from).div(1 ether); // includes 18 decimals
-        uint256 amountInMaximum = 10 ** 28 ;
-        uint160 sqrtPriceLimitX96 = 0;
-        uint24 fee = 3000;
-        require(wethToken.approve(address(uinswapV3RouterAddress), amountOut), "WETH approve failed");
-        ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter.ExactOutputSingleParams(
-        wethAddress,
-        daiAddress,
-        fee,
-        recipient,
-        deadline,
-        amountOut,
-        amountInMaximum,
-        sqrtPriceLimitX96
-        );
-        uniswapRouter.exactOutputSingle(params);
-        uniswapRouter.refundETH();
-        claimedRewards(from);
+    
+    function getRewardPerc()public view returns(uint){
+        return rewardPerc;
     }
 
-    function wrapETH() public onlyOwner{
-        uint ethBalance = address(this).balance; //address(this) is contract address
-        require(ethBalance > 0, "No ETH available to wrap");
-        emit Log("wrapETH", ethBalance);
-        wethToken.deposit{ value: ethBalance }();
+    function getGasFee() public view returns(uint){
+        return gasFee;
     }
+
+    function getClaimDate()public view returns(uint){
+        return nextClaimDate[msg.sender];
+    }
+
     receive() external payable {
     // accept ETH, do nothing as it would break the gas fee for a transaction
     }
-
-
-    /*
-    struct rewardToken{
-    uint amount;
-    uint time;
-    }
-    event TradeRewards(uint time, address indexed from, uint amount);
-    mapping (address => rewardToken[]) public ownerRewards; // address1 => [struct1, struct2]
-    mapping (address => uint) rewardCount;  //keep track of rewards quantity
-    mapping (address => uint) rewardAvilable; //reward available to collect
-    rewardToken[] public rewardtokens;
-
-
-    // old ideas
-    function getRewards(address from,uint _amount) internal{ //record rewards to user
-        require(_amount > 0, "No reward to record");
-        ownerRewards[from].push(rewardToken(_amount, block.timestamp));
-        rewardCount[from] = rewardCount[from].add(1);
-        emit TradeRewards(block.timestamp, from, _amount);
-    }
-
-    function calRewards(address from, uint gasused, uint rewardPercen)public{ // cal of gas reward
-        uint amount;
-        require(rewardPercen <= 1000, "No more than 100%");
-        amount = gasused.mul(rewardPercen.div(10));
-        getRewards(from, amount);
-    }
-
-    //collect available rewards when timestamp pass 2 week
-    //https://ethereum.stackexchange.com/questions/39520/how-to-return-an-array-of-structs-or-an-array-of-destructured-structs-in-solid
-    function collectRewards(address from) public{
-        uint tempCollectable = 0;
-        require(rewardCount[from] > 0, "No reward to collect");
-        for(uint i=0; i< ownerRewards[from].length; i++){
-            if(ownerRewards[from][i].time.add(2 weeks) >= block.timestamp){
-                tempCollectable = tempCollectable.add(ownerRewards[from][i].amount);
-                delete ownerRewards[from][i];
-                rewardCount[from] = rewardCount[from].sub(1);
-            }
-        }
-        rewardAvilable[from].add(tempCollectable);
-        emit CollectableReward(from, rewardAvilable[from]);
-    }
-
-    function collectableRewards(address from)public view returns(uint){
-        return rewardAvilable[from];
-    }
-
-
-    // for web3 call to input gasprice
-    function gasUsed(uint gasPrice)public view returns (uint){
-        return gasPrice.mul(gasleft());
-    }
-    */
-
 
 }

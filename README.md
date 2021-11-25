@@ -2,8 +2,24 @@
 
 This project is for the CE/CZ4153 Blockchain Technology course offered during AY21/22 Semester 1 at the School of Computer Science and Engineering, Nanyang Technological University, Singapore.
 
-## Project Details
+## Project Deployment Requirements:
+In Command Prompt, Navgating to the Project folder and install the following:
+1. npm install --save-dev @nomiclabs/hardhat-waffle ethereum-waffle chai @nomiclabs/hardhat-ethers ethers
+2. npm install @openzeppelin/contracts
+3. npm add @uniswap/v3-periphery
+4. npm install --save-dev solidity-coverage
+   - add import "solidity-coverage" in to hardhat.config.ts
 
+For testnet deployment, In hardhat.config file
+- add your alchemy api key
+- add your metamask private key
+- add your etherscan api key
+    
+For testing/debugging locally,
+ - npx hardhat node --fork [your alchemy api key] //is required so that we can get token address info
+ - npx hardhat test --network local //to connect to local node for testing
+
+## Project Details
 **Project Summary:** \
 For each trade a user does on Pendle’s AMM, he is entitled to retroactively receive some PENDLE rewards.
 
@@ -17,8 +33,12 @@ Create a new TradeMiningRewards contract that can retroactively distribute rewar
 - A way to verify the trade mining incentive recipient list and recipient amount.
 - A way for incentive recipients to claim their rewards.
 - A trade mining epoch of every 2 weeks, where rewards are calculated over an epoch. \
-Bonuses / Nice to haves:
+*Bonuses / Nice to haves:*
 - A sound trade mining reward mechanism design and gas-optimized distribution method.
--	Documentation of the TradiningMiningReward contract’s specs.
--	Tests must be written in Typescript.
+- Documentation of the TradiningMiningReward contract’s specs.
+- Tests must be written in Typescript.
 
+
+## Project Approach & Design Explanation
+Our Trade mining smart contract would reward users with Pendle tokens for each transaction they make on Pendle’s AMM. We were told to spefically target the swapExactIn and swapExactOut functions on Pendle’s AMM. Meaning our smart contract would trigger within the swapExactIn and swapExactOut transactions the user makes. \
+The amount of Pendle token reward will be calculated with a formula that would be publicise. 
