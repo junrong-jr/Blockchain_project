@@ -18,6 +18,7 @@ For testnet deployment, In hardhat.config file
 For testing/debugging locally,
  - npx hardhat node --fork [your alchemy api key] //is required so that we can get token address info
  - npx hardhat test --network local //to connect to local node for testing
+ - npx hardhat coverage --testfiles "test/registry/*.ts"
 
 ## Project Details
 **Project Summary:** \
