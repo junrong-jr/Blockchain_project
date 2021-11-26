@@ -45,6 +45,7 @@ contract TradeMiningReward is Ownable{
     //indexed for external to search for specific address event
     
     event RewardLog(address from, uint amount);
+    event Claimamount(uint amount);
     event Log(string msg, uint ref);
     mapping (address => uint) lockedRewards;// locked allocated reward
     mapping (address => uint) unlockedRewards; // collectable reward
@@ -55,14 +56,14 @@ contract TradeMiningReward is Ownable{
     } 
 
     //initial plan estimate all wei to pendle value and store it as pendle value, but it will be decimal
-    /* ----------------------------------Main function------------------------------------------*/
-    function claimRewardsV2()public returns (uint){ // imitate function claimRewards
+    /* ----------------------------------Main functions------------------------------------------*/
+    function claimRewardsV2()public { // imitate function claimRewards
         Claim();
-        uint amount = getUnlockedBalance().div(1000000 wei);
+        uint amount = getUnlockedBalance();
         require(amount >0, "Nothing to claim");
         clearUnlockReward();
-        console.log("Claimed ethers", amount);
-        return amount;
+        //console.log("Claimed in wei:", amount);
+        emit Claimamount(amount);   
     }
 
     function swap(uint stakePerc, uint gasPrice) public{ //imitate swap function
@@ -151,6 +152,10 @@ contract TradeMiningReward is Ownable{
 
     function getClaimDate()public view returns(uint){
         return nextClaimDate[msg.sender];
+    }
+
+    function getTxGasUnit() public view returns(uint){
+        return txGasUnit;
     }
 
     receive() external payable {

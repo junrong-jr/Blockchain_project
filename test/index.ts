@@ -8,6 +8,7 @@ import { ethers } from "hardhat";
 describe("TradeMining Contract test", () =>{
   let tradeMining: Contract, owner: SignerWithAddress, addr1: SignerWithAddress, addr2: SignerWithAddress;
   const delay = (ms: number | undefined) => new Promise(res => setTimeout(res, ms));
+  const delaytime = 5000;
 
   beforeEach(async ()=> {
     const contractName = "TradeMiningReward";
@@ -30,7 +31,7 @@ describe("TradeMining Contract test", () =>{
     });
 
     it("Not allowing not Owner to access", async () =>{
-      await expect( tradeMining.connect(addr1).transferOwner(addr2.address) ).to.be.revertedWith("Accessible only by the owner !!");
+      await expect( tradeMining.connect(addr1).transferOwner(addr1.address) ).to.be.revertedWith("Accessible only by the owner !!");
     });
 
     it("allow owner to set new RewardPerc", async () =>{
@@ -41,6 +42,11 @@ describe("TradeMining Contract test", () =>{
     it("over 100% rewardPerc", async () =>{
       await expect( tradeMining.setRewardPerc(101)).to.be.revertedWith("No more than 100%");
     });
+
+    it("allows owner to set new TxGasUnit", async () =>{
+      await tradeMining.setTxGasUnit(5888888888888);
+      expect(await tradeMining.getTxGasUnit()).to.equal(5888888888888);
+    })
   });
 
   describe("Gas Fee", ()=>{     //Function tested updateGasFee(), getGasFee()
@@ -78,7 +84,7 @@ describe("TradeMining Contract test", () =>{
   describe("Locked tokens to unlocked tokens", () =>{       // Function tested lockToUnlock(), getUnlockedBalance(), setClaimDate()
     it("Will convert correctly", async ()=>{
       await tradeMining.connect(addr1).allocateRewards(3000,150);
-      await delay(5000);
+      await delay(delaytime);
       await tradeMining.connect(addr1).lockToUnlock();
       expect(await tradeMining.connect(addr1).getLockedBalance()).to.equal(0);
       expect(await tradeMining.connect(addr1).getUnlockedBalance()).to.equal(3499999999999950);
@@ -94,23 +100,42 @@ describe("TradeMining Contract test", () =>{
     });
   });
 
-  describe("Claiming rewards", () =>{                 // claimRewardsV2() 
+
+  describe("Claiming rewards", () =>{                 //Function tested claimRewardsV2() 
     it("Will Claim and reset unlock amount", async ()=>{
     await tradeMining.connect(addr1).allocateRewards(3000,150);
-    await delay(5000);
-    const amount = await tradeMining.connect(addr1).claimRewardsV2();
-    //console.log("Claimed ethers test", amount);
-    //expect(amount).to.equal(3499999999); //3499999999999950/1000000
+    await delay(delaytime);
+    await expect(tradeMining.connect(addr1).claimRewardsV2()).to.emit(tradeMining, 'Claimamount')
+    .withArgs(3499999999999950);
     expect(await tradeMining.connect(addr1).getUnlockedBalance()).to.equal(0);
     });
 
     it("If nothing to claim will throw correctly", async ()=>{
       await tradeMining.connect(addr1).allocateRewards(3000,150);
-      await delay(5000);
+      await delay(delaytime);
       await tradeMining.connect(addr1).claimRewardsV2();
       await expect(tradeMining.connect(addr1).claimRewardsV2()).to.be.revertedWith("Nothing to claim");
     });
   });
 
+  describe("Overall nomral use case", () =>{            //Function tested swap()
+    it("With one user, swapping twice within time lock", async () => {
+      await tradeMining.connect(addr1).swap(1000,150); //swap.
+      await tradeMining.connect(addr1).swap(1000,150);  //swapping again within the time lock.
+      await delay(delaytime);                                // waiting for time lock to end.
+      await expect(tradeMining.connect(addr1).claimRewardsV2()).to.emit(tradeMining, 'Claimamount')
+      .withArgs(2799999999999960 *2);
+      console.log("Test claimed:", (2799999999999960 *2));  //2799999999999960 *2 /wei
+    });
+
+    /*it("With one user, swapping twice within time lock", async () => {
+      await tradeMining.connect(addr1).swap(1000,150); //swap.
+      await delay(delaytime);
+      await tradeMining.connect(addr1).swap(1000,150);  //swapping again within the time lock.                                
+      await tradeMining.connect(addr1).claimRewardsV2();
+      console.log("Test claimed:", (2799999999999960))  //2799999999999960 *2 /wei
+    });
+    */
+  });
 
 });
