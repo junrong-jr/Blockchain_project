@@ -2,6 +2,7 @@ import { task } from "hardhat/config";
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-ethers";
 //import "@nomiclabs/hardhat-etherscan";
+import "solidity-coverage";
 
 const Alchemy = "https://eth-kovan.alchemyapi.io/v2/FHjLShGhQ-8m7eiRzQ9CgwfGwoVlwgoO";
 const Moralis = "https://speedy-nodes-nyc.moralis.io/083b34a3a4e875f3e74e50bb/eth/ropsten";
