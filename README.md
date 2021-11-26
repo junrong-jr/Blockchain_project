@@ -18,6 +18,7 @@ For testnet deployment, In hardhat.config file
 For testing/debugging locally,
  - npx hardhat node --fork [your alchemy api key] //is required so that we can get token address info
  - npx hardhat test --network local //to connect to local node for testing
+ - npx hardhat coverage --testfiles "test/registry/*.ts"
 
 ## Project Details
 **Project Summary:** \
@@ -36,9 +37,17 @@ Create a new TradeMiningRewards contract that can retroactively distribute rewar
 *Bonuses / Nice to haves:*
 - A sound trade mining reward mechanism design and gas-optimized distribution method.
 - Documentation of the TradiningMiningReward contract’s specs.
-- Tests must be written in Typescript.
-
+- Tests must be written in Typescript. \
+*Tips:*
+- Mainnet forking requires archival node access. It is therefore recommended to use Alchemy as your node provider, or run your own node.
+- Gas optimized distribution by performing a merkle airdrop.
 
 ## Project Approach & Design Explanation
+### Understanding of the problem
+This portion is to explain how we reached our approach & design of our smart contract even though it is different to what was required in the project details. \
+To be honest, when we first started off the project we did not fully understand the recommended solution to the problem. However, we did understood the problem and that we needed to reward Pendel tokens to users for each transaction they make on Pendle’s AMM. Needed to calculate rewards off-chain to save on gas fee for Pendle. Needed to have a gas-optimized distribution method on-chain. We misunderstood the 2-week epoch and just took it as a timelock of 2 weeks before claiming. (We will explain more later on and you will be able to see that we clearly misunderstood.) So with that in mind, we design our smart contract for Pendle’s side to consume as little gas as possible. \
+It was a bit too late when we realised that the recommended solution in the project details basically revolves around performing a merkle airdrop. Back then after we started we simply just thought that merkle airdrop is just another alternative to a gas-optimized distribution method but we have already thought of our own method. However, we did not change to the merkle airdrop method for these few reasons. Firstly, we did not see the linkage of all the features pointing to the merkle airdrop method (I mean it was in the tips portion, we thought it was not linked, just like a good to have kinda thing). Secondly, it did not fit into our design already and lastly, we even compare merkle airdrop against ours which we will talk about below.
+
+### Design Approach
 Our Trade mining smart contract would reward users with Pendle tokens for each transaction they make on Pendle’s AMM. We were told to spefically target the swapExactIn and swapExactOut functions on Pendle’s AMM. Meaning our smart contract would trigger within the swapExactIn and swapExactOut transactions the user makes. \
 The amount of Pendle token reward will be calculated with a formula that would be publicise. 
