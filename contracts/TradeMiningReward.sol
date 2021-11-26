@@ -34,22 +34,20 @@ contract TradeMiningReward is Ownable{
     uint private txGasUnit;
     uint public gasFee;
     uint public ethPrice = 0;
-    uint public timePeriod = 4 seconds; // set to 2 weeks, 4 sec for debugging
+    uint public timePeriod = 4 seconds; // set to 2 weeks, 4 sec for testing/debugging
     IERC20 daiToken = IERC20(daiAddress);
     DepositableERC20 wethToken = DepositableERC20(wethAddress);
     IQuoter quoter = IQuoter(uinswapV3QuoterAddress);
     IUniswapRouter uniswapRouter = IUniswapRouter (uinswapV3RouterAddress);
 
-
-    // fix gasFee to  discourage frontrunning, if user set high gasfee and expect return from it also swap gas used is quite predictable
     //indexed for external to search for specific address event
     
     event RewardLog(address from, uint amount);
     event Claimamount(uint amount);
     event Log(string msg, uint ref);
-    mapping (address => uint) lockedRewards;// locked allocated reward
-    mapping (address => uint) unlockedRewards; // collectable reward
-    mapping (address => uint) nextClaimDate; // track whether user claimed when unlocked
+    mapping (address => uint) lockedRewards;    // allocated locked reward
+    mapping (address => uint) unlockedRewards; // Claimable (unlocked) reward
+    mapping (address => uint) nextClaimDate; // time track whether user can claim
     constructor(){
         rewardPerc = 40; //set to 40%, 1 = 1%
         txGasUnit = 46666666666666; //(estimated gas used) avg transaction fee about 0.007 ether = 0.007e18 wei, assuming avg gas price is 150 wei then it is 46,666,666,666,667 gas used

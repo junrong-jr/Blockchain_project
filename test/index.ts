@@ -49,6 +49,7 @@ describe("TradeMining Contract test", () =>{
     })
   });
 
+
   describe("Gas Fee", ()=>{     //Function tested updateGasFee(), getGasFee()
     it("Update the Gas Fee correctly", async () =>{
       await tradeMining.updateGasFee(150);
@@ -60,9 +61,10 @@ describe("TradeMining Contract test", () =>{
     });
   });
 
+
   describe("Reward allocation", ()=>{                       // Function tested allocateRewards(), updateGasFee(), getLockedBalance();
     it("Right number of reward if StakePerc NOT achieved", async () =>{
-      await tradeMining.connect(addr1).allocateRewards(1000,150);                 // Allocate to addr1
+      await tradeMining.connect(addr1).allocateRewards(1000,150);                 // Allocate to addr1, will still be locked
       const addr1locked = await tradeMining.connect(addr1).getLockedBalance();    // addr1 getLockedBalance
       expect(addr1locked).to.equal(2799999999999960);         // (150*46666666666666)*40/100
       //console.log("addr1 lock value is ", addr1locked);
@@ -81,6 +83,7 @@ describe("TradeMining Contract test", () =>{
     });
   })
 
+
   describe("Locked tokens to unlocked tokens", () =>{       // Function tested lockToUnlock(), getUnlockedBalance(), setClaimDate()
     it("Will convert correctly", async ()=>{
       await tradeMining.connect(addr1).allocateRewards(3000,150);
@@ -91,7 +94,7 @@ describe("TradeMining Contract test", () =>{
     });
 
     it("if still not claimable will throw correctly", async ()=>{
-      await tradeMining.connect(addr1).allocateRewards(3000,150);
+      await tradeMining.connect(addr1).allocateRewards(3000,150);    // time lock still active 
       await expect(tradeMining.connect(addr1).lockToUnlock()).to.be.revertedWith("Still not unlockable");
     });
 
@@ -118,24 +121,45 @@ describe("TradeMining Contract test", () =>{
     });
   });
 
-  describe("Overall nomral use case", () =>{            //Function tested swap()
-    it("With one user, swapping twice within time lock", async () => {
+  
+  describe("Overall normal use case", () =>{            //Function tested swap()
+    it("Swapping twice within time lock", async () => {
       await tradeMining.connect(addr1).swap(1000,150); //swap.
       await tradeMining.connect(addr1).swap(1000,150);  //swapping again within the time lock.
-      await delay(delaytime);                                // waiting for time lock to end.
-      await expect(tradeMining.connect(addr1).claimRewardsV2()).to.emit(tradeMining, 'Claimamount')
-      .withArgs(2799999999999960 *2);
-      console.log("Test claimed:", (2799999999999960 *2));  //2799999999999960 *2 /wei
+      await delay(delaytime);                           // wait for time lock to end.
+      await expect(tradeMining.connect(addr1).claimRewardsV2()).to.emit(tradeMining, 'Claimamount') //calim
+      .withArgs(2799999999999960 *2);                   // therefore claiming the amount of both swaps.
     });
 
-    /*it("With one user, swapping twice within time lock", async () => {
+    it("Swapping once, wait time lock, swap again and claim immediately", async () => {
       await tradeMining.connect(addr1).swap(1000,150); //swap.
-      await delay(delaytime);
-      await tradeMining.connect(addr1).swap(1000,150);  //swapping again within the time lock.                                
-      await tradeMining.connect(addr1).claimRewardsV2();
-      console.log("Test claimed:", (2799999999999960))  //2799999999999960 *2 /wei
+      await delay(delaytime);                           //wait for time lock to end.
+      await tradeMining.connect(addr1).swap(1000,150);  //swapping again                                
+      await expect(tradeMining.connect(addr1).claimRewardsV2()).to.emit(tradeMining, 'Claimamount') // Claiming immediately
+      .withArgs(2799999999999960 *2);  //allowed to claim amount both swaps. or any amount till claim after first swap time lock.
     });
-    */
+
+    it("Swapping once, wait time lock, claim, swap and claim again", async () => {
+      await tradeMining.connect(addr1).swap(1000,150); //swap.
+      await delay(delaytime);                           //wait for time lock to end.
+      await expect(tradeMining.connect(addr1).claimRewardsV2()).to.emit(tradeMining, 'Claimamount') //Claim
+      .withArgs(2799999999999960);                                                                  //the first swap worth. Which would reset the time lock.
+      await tradeMining.connect(addr1).swap(1000,150);  //swapping again                                
+      await expect(tradeMining.connect(addr1).claimRewardsV2()) // Claiming immediately
+      .to.be.revertedWith("Nothing to claim");                  // but not calimable yet. timelocked
+    });
+
+    it("Swapping once, wait time lock, claim, wait time lock, swap and claim immediately", async () => {
+      await tradeMining.connect(addr1).swap(1000,150); //swap.
+      await delay(delaytime);                           //wait for time lock to end.
+      await expect(tradeMining.connect(addr1).claimRewardsV2()).to.emit(tradeMining, 'Claimamount') //Claim
+      .withArgs(2799999999999960);                                                                  //the first swap worth. Which would reset the time lock.
+      await delay(delaytime);
+      await tradeMining.connect(addr1).swap(1000,150);  //swapping again                                
+      await expect(tradeMining.connect(addr1).claimRewardsV2()).to.emit(tradeMining, 'Claimamount') // Claiming immediately
+      .withArgs(2799999999999960);                     // allowed to claim. as the time locked started from the last claiming.
+                                                       // However no one would normally claim just one swap with but would accumulate a few swap worth.
+    });
   });
 
 });
