@@ -1,6 +1,5 @@
 //const hre = require('hardhat');
 //const fs = require('fs');
-//import { hre } from "hardhat";
 //import { ethers } from "ethers";
 
 import { ethers } from "hardhat";
@@ -13,6 +12,7 @@ async function main() {
   const TradeMining = await smartContract.deploy();
   await TradeMining.deployed();
   console.log(`${contractName} deployed to: ${TradeMining.address}`);
+
 }
 
 main()
