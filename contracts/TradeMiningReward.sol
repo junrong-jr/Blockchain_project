@@ -30,24 +30,22 @@ contract TradeMiningReward is Ownable {
     uint256 public gasFee;
     uint256 public timePeriod = 4 seconds; // set to 2 weeks, 4 sec for debugging
 
-    // fix gasFee to  discourage frontrunning, if user set high gasfee and expect return from it also swap gas used is quite predictable
-    //indexed for external to search for specific address event
-
     event AllocateAmount(uint256 amount);
     event ClaimAmount(uint256 amount);
-    mapping(address => uint256) public lockedRewards; // locked allocated reward
+    mapping(address => uint256) public lockedRewards; // allocated locked reward
     mapping(address => uint256) public unlockedRewards; // collectable reward
-    mapping(address => uint256) public nextClaimDate; // track whether user claimed when unlocked
+    mapping(address => uint256) public nextClaimDate; // Store timelock period
 
     constructor() {
-        rewardPerc = 40; //set to 40%, 1 = 1%
-        txGasUnit = 46666666666666; //(estimated gas used) avg transaction fee about 0.007 ether = 0.007e18 wei, assuming avg gas price is 150 wei then it is 46,666,666,666,667 gas used
-        stakeTarget = 2000;
+        rewardPerc = 40; // RewardPercentage set to 40%, 1 = 1%; aka basic rewardPerc %
+        txGasUnit = 46666666666666; //Amount of gas unit the swap Tx would use.
+//                                   //(estimated gas used) let the estimation of avg transaction fee about 0.007ether = 0.007e18wei, assuming avg gas price is 150 wei then it is 46,666,666,666,667 gas uints used
+        stakeTarget = 2000;         // target Number of Pendle tokens staked
     }
 
-    //initial plan estimate all wei to pendle value and store it as pendle value, but it will be decimal
+    //Everything is stored in wei. Therfore lockedRewards and unlockedRewards are stored in wei worth of Pendle tokens.
 
-    /* ----------------------------------imitate function (this function should in other contract)------------------------------------------*/
+    /* ----------------------------------imitate swapExactIn and swapExactOut function (this function should be in other Pendle contract)------------------------------------------*/
     function swap(uint256 stakePerc, uint256 gasPrice) public {
         //imitate swap function
         //do magic swap
@@ -56,7 +54,7 @@ contract TradeMiningReward is Ownable {
     }
 
     /* ----------------------------------Main function------------------------------------------*/
-    function claimRewardsV2() public {
+    function claimRewardsV2() public {              // Users will call this function to claim unlocked tokens
         // imitate function claimRewards
         checkUnlockable();
         uint256 amount = getUnlockedBalance();
@@ -65,10 +63,9 @@ contract TradeMiningReward is Ownable {
         emit ClaimAmount(amount);
     }
 
-    function checkUnlockable() internal {
-        //user will call this function to claim all their unlockRewards
-        if (getLockedBalance() > 0) {
-            if (getClaimDate() <= block.timestamp) {
+    function checkUnlockable() public {  //swap() and claimRewardsV2() will call this function
+        if (getLockedBalance() > 0) {                            // if nothing to unlock skip function
+            if (getClaimDate() <= block.timestamp) {            // if timelock <= time now else skip function
                 // set new nextClaimDate & move lock to unlock
                 lockToUnlock();
                 setClaimDate();
@@ -77,31 +74,28 @@ contract TradeMiningReward is Ownable {
     }
 
     /* ----------------------------------External function------------------------------------------*/
-    // should be external since swap from other contract will call this function
-    function allocateRewards(uint256 stakePerc, uint256 gasPrice) internal {
-        // gas fee * (basic + stake), allocate locked rewards after swap function
+    // The follwing functions should be external since swap from other contract will call this function, set to public for testing purpose
+    
+    function allocateRewards(uint256 stakePerc, uint256 gasPrice) public {      //allocate locked rewards after swap function
         uint256 amount;
         uint256 totalPerc = rewardPerc;
         updateGasFee(gasPrice);
-        if (getClaimDate() == 0) {
-            // check is it new user then set time for new user
+        if (getClaimDate() == 0) {            // check is it new user then set time for new user
             setClaimDate();
         }
-        if (stakePerc >= stakeTarget) {
-            // if stake more than 2000 token
-            totalPerc = rewardPerc.add(10); // basic + stake
+        if (stakePerc >= stakeTarget) {       // if stake more than 2000 Pendle token
+            totalPerc = rewardPerc.add(10);  // (rewardPerc %) + (stake %); stake % = 10%
         }
         require(totalPerc <= 100, "No more than 100%");
-        amount = gasFee.mul(totalPerc).div(100); // (gasPrice * txGasUnit) * (basic + stake)
+        amount = gasFee.mul(totalPerc).div(100);             // (gasFee) * (total %) is equal to (gasPrice * txGasUnit) * (rewardPerc % + stake %)
         lockedRewards[msg.sender] = lockedRewards[msg.sender].add(amount); // value stored in wei
         emit AllocateAmount(amount);
     }
 
-    /* ----------------------------------Should be internal function, set to public for testing purpose------------------------------------------*/
+    /* ----------------------------------Should be internal functions, set to public for testing purpose------------------------------------------*/
 
-    // should be internal only called by claim
-    function lockToUnlock() internal {
-        // allocate all lock to unlock, change to external if swap() is moved out
+    // should be internal only called by checkUnlockable()
+    function lockToUnlock() public {
         require(getClaimDate() < block.timestamp, "Still not unlockable");
         require(lockedRewards[msg.sender] > 0, "Nothing to unlock");
         unlockedRewards[msg.sender] = unlockedRewards[msg.sender].add(
@@ -110,27 +104,27 @@ contract TradeMiningReward is Ownable {
         lockedRewards[msg.sender] = 0; // reset to 0 value
     }
 
-    // should be internal only called by claimRewards
-    function clearUnlockReward() internal {
+    // should be internal only called by claimRewardsV2()
+    function clearUnlockReward() public {
         //reward claimed, set unlockedRewards to 0
         unlockedRewards[msg.sender] = 0;
         require(unlockedRewards[msg.sender] == 0, "Reward not cleaned up");
     }
 
     // should be internal only called when allocateRewards
-    function updateGasFee(uint256 gasPrice) internal {
+    function updateGasFee(uint256 gasPrice) public {
         require(gasPrice > 0, "gas Price > 0");
         gasFee = txGasUnit.mul(gasPrice);
     }
 
-    function setClaimDate() internal {
-        // set next claimable date after claimed
+    function setClaimDate() public {
+        // set or reset 2 weeks timelock
         nextClaimDate[msg.sender] = block.timestamp.add(timePeriod);
     }
 
     /* ----------------------------------Only owner function------------------------------------------*/
     function setRewardPerc(uint256 newPerc) public onlyOwner {
-        //only owner can set %
+        //only owner can set basic rewardPerc %
         require(newPerc <= 100, "No more than 100%");
         rewardPerc = newPerc;
     }
