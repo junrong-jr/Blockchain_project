@@ -51,5 +51,8 @@ We were a bit too deep in before we realised that the recommended solution in th
 
 
 ### Design Approach
-Our Trade mining smart contract would reward users with Pendle tokens for each transaction they make on Pendle’s AMM. We were told to spefically target the `swapExactIn` and `swapExactOut` functions on Pendle’s AMM. Meaning our smart contract would trigger within the `swapExactIn` and `swapExactOut` transactions the user makes. \
-The amount of Pendle token reward will be calculated with a formula that would be publicise. 
+Our Trade mining smart contract would reward users with Pendle tokens for each transaction they make on Pendle’s AMM. We were told to spefically target the `swapExactIn` and `swapExactOut` functions on Pendle’s AMM. Meaning our smart contract would trigger within the `swapExactIn` and `swapExactOut` transactions the user makes.
+
+The amount of Pendle token reward should be calculated off-chain with a formula that would be publicised. However, for our codes, we did the calculations on-chain. \
+~~Back when we first started we thought would show how would our calculation & formula works by doing it on-chain and that it is possible somehow to do the calculation off-chain as push back as an input on-chain and later explain it in the documentation that it should be done that way. Unfortunately at the point of writing this, we realised that that is not possible and that our logical thinking for this point was erroneous :(. (and yes, one more feature that points towards Merkle airdrop that we notice only now.) With that being said and done, we will move forward with the erroneous thinking that the calculations could be done off-chain somehow, as that is what we through while doing the smart contract. So our thinking back then was as follows...~~ \
+We did not want to simply leave a blank void and say that we would calculate the reward off-chain by a server/computer, so we still did the calculation on-chain for our codes. So to clarify, the calculation can and should be done off-chain but we did it on-chain to show how would our calculation & formula works. More will be explained when we talk about our codes.
