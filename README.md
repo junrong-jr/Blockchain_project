@@ -52,7 +52,7 @@ Our Trade mining smart contract would reward users with Pendle tokens for each t
 #### Caluation of Pendle token reward
 The amount of Pendle token reward should be calculated off-chain with a formula that would be publicised. However, for our contract codes, we did the calculations on-chain. \
 *[Back when we first started we thought would show how would our calculation & formula works by doing it on-chain, and that it is possible somehow to do the calculation off-chain and push back as an input on-chain, and then later explain it in the documentation that it should be done that way. Unfortunately at the point of writing this, we realised that that is not possible and that our thinking for this point was erroneous ☹️. (and yes, one more feature that points towards Merkle airdrop that we notice only now.) With that being said and done, we will move forward with the erroneous thinking that the calculations could be done off-chain somehow, as that is what we through while doing the smart contract. So our thinking back then was as follows...]* \
-We did not want to simply leave a blank void and say that we would calculate the reward off-chain by a server/computer, so we still did the calculation on-chain for our codes. So to simplify, the calculation can/should be done off-chain but we did it on-chain to show how would our calculation & formula works. The amount of the reward will vary according to the average Gas price during the transaction. Meaning the higher the Gas price the more the reward amount. The average gas price would be pulled from a trusted oracle. More will be explained during the code explanation.
+We did not want to simply leave a blank void and say that we would calculate the reward off-chain by a server/computer, so we still did the calculation on-chain for our codes. So to simplify, the calculation can/should be done off-chain but we did it on-chain to show how would our calculation & formula works. The amount of the reward will vary according to the average Gas price during the transaction. Meaning the higher the Gas price the more the reward amount. The average gas price would be pulled from a trusted oracle. Formula will be explained below.
 
 #### 2 Week Timelock & allocation 
 After the calculations, the contract would allocate the Pendel tokens to the user. \
@@ -65,3 +65,19 @@ The claim function would also check if your timelock is up and if it is it would
 #### Comparison with Merkle airdrop
 Our understanding of Merkle airdrop is that the deployer of this smart contract would have to deploy a Merkle airdrop contract with the list of incentive recipients their amount. And the recipients would have to claim the amount from the Merkle airdrop contract. However, every 2 weeks the deployer would have to deploy a new Merkle airdrop contract. Merkle airdrop is beneficial as the deployer would not have to individually make a transaction to each recipient and therefore the deployer would save on a lot of gas fees. So essentially, instead of the deployer spending all the gas fee it would be spread across to the recipient as they claim it. \
 For our use case, we essentially also does have the same benefit by spreading the cost to the users instead of the deployer. In fact, for our use case, the deployer would not even have to spend ether to keep deploying a Merkle airdrop every 2 weeks. Low infrequent users might not benefit when using Merkle airdrop as there is a possibility that the gas fee for claiming might be higher than the rewards. But for our use case, our rewards will stack indefinitely until he wants to claim it. Therefore due to these reasons, we decided to stick with our method instead of using Merkle airdrop.
+
+#### Formula for rewards caluation
+Amount of reward = `(gasPrice * txGasUnit) * (rewardPerc % + stakePerc %)` can be simplified to `(gasFee) * (totalPerc)` \
+`gasPrice` would be an average gas price during the Tx time that would be pulled from a trusted oracle. \
+`txGasUnit` would be the amount of gas unit the swap Tx would use. It should be quite fixed. But the amount in the codes is basically an random estimation. But in actucal it should be how much gas unit would the `swapExactIn` and `swapExactOut` transactions uses. \
+`rewardPerc %` would be the basic percentage of Gas Fee that Pendel would reward back as Pendel tokens. \
+`stakePerc %` would be the additional percentage added on if the user have stacked back Pendel tokens. 
+
+## Smart Contract Test Cases & Coverage
+![Test Coverage](/testCoverage.png)
+
+## Smart Contract Deployment
+Deployed contract: https://ropsten.etherscan.io/address/0x5D9220389a91cE7cE659E1e90aab1c545D1D718d#code \
+Contract is deployed at ropsten testnet.
+
+## If we have more time, what would we do
