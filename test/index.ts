@@ -47,6 +47,10 @@ describe("TradeMining Contract test", () => {
       await tradeMining.setTxGasUnit(5888888888888);
       expect(await tradeMining.txGasUnit()).to.equal(5888888888888);
     })
+    it("allow owner to set new stakeTarget", async () => {
+      await tradeMining.setStakeTarget(5000);
+      expect(await tradeMining.stakeTarget()).to.equal(5000);
+    })
   });
 
 
@@ -134,6 +138,7 @@ describe("TradeMining Contract test", () => {
     it("Swapping once, wait time lock, swap again and claim immediately", async () => {
       await tradeMining.connect(addr1).swap(1000, 150); //swap.
       await delay(delaytime);                           //wait for time lock to end.
+      await tradeMining.connect(addr1).swap(1000, 150);  //swapping again    
       await tradeMining.connect(addr1).swap(1000, 150);  //swapping again                                
       await expect(tradeMining.connect(addr1).claimRewardsV2()).to.emit(tradeMining, 'ClaimAmount') // Claiming immediately
         .withArgs(2799999999999960);  //allowed to claim first swaps. since the 2nd swap past 2 week epoch.
@@ -155,7 +160,22 @@ describe("TradeMining Contract test", () => {
       await expect(tradeMining.connect(addr1).claimRewardsV2()).to.emit(tradeMining, 'ClaimAmount') //Claim
         .withArgs(2799999999999960);                                                                  //the first swap worth. Which would reset the time lock.
       await delay(delaytime);
-      await tradeMining.connect(addr1).swap(1000, 150);  //swapping again                                
+      await tradeMining.connect(addr1).swap(1000, 150);  //swapping again    
+      await tradeMining.connect(addr1).swap(1000, 150);  //swapping again                             
+      await expect(tradeMining.connect(addr1).claimRewardsV2()).to.emit(tradeMining, 'ClaimAmount') // Claiming immediately
+        .withArgs(2799999999999960);                     // allowed to claim. as the time locked started from the last claiming.
+      // However no one would normally claim just one swap with but would accumulate a few swap worth.
+    });
+
+    it("Swapping once, wait time lock, claim, swap, wait time lock, swap multiple time and claim", async () => {
+      await tradeMining.connect(addr1).swap(1000, 150); //swap.
+      await delay(delaytime);                           //wait for time lock to end.
+      await expect(tradeMining.connect(addr1).claimRewardsV2()).to.emit(tradeMining, 'ClaimAmount') //Claim
+        .withArgs(2799999999999960);
+      await tradeMining.connect(addr1).swap(1000, 150);  //swapping again                                                                      //the first swap worth. Which would reset the time lock.
+      await delay(delaytime);
+      await tradeMining.connect(addr1).swap(1000, 150);  //swapping again    
+      await tradeMining.connect(addr1).swap(1000, 150);  //swapping again                             
       await expect(tradeMining.connect(addr1).claimRewardsV2()).to.emit(tradeMining, 'ClaimAmount') // Claiming immediately
         .withArgs(2799999999999960);                     // allowed to claim. as the time locked started from the last claiming.
       // However no one would normally claim just one swap with but would accumulate a few swap worth.
