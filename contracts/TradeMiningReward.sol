@@ -71,12 +71,13 @@ contract TradeMiningReward is Ownable {
             // check is it new user then set time for new user
             setClaimDate();
         }
-        if (stakePerc >= stakeTarget) {
-            // if stake more than 2000 token
-            totalPerc = rewardPerc.add(10); // basic + stake
+        
+        if (stakePerc >= stakeTarget) {       // if stake more than 2000 Pendle token
+            totalPerc = rewardPerc.add(10);  // (rewardPerc %) + (stakePerc %); stakePerc % = 10%
         }
         require(totalPerc <= 100, "No more than 100%");
-        amount = gasFee.mul(totalPerc).div(100); // (gasPrice * txGasUnit) * (basic + stake)
+        amount = gasFee.mul(totalPerc).div(100);             // (gasFee) * (total %) is equal to (gasPrice * txGasUnit) * (rewardPerc % + stakePerc %)
+
         lockedRewards[msg.sender] = lockedRewards[msg.sender].add(amount); // value stored in wei
         emit AllocateAmount(amount);
     }
@@ -126,7 +127,7 @@ contract TradeMiningReward is Ownable {
         stakeTarget = newLimit;
     }
 
-    /* ----------------------------------All view function------------------------------------------*/
+    /* ----------------------------------All view function----------------------_--------------------*/
 
     function getRewardPerc() public view onlyOwner returns (uint256) {
         return rewardPerc;
