@@ -11,8 +11,8 @@ In Command Prompt, Navgating to the Project folder and install the following:
 For testnet deployment, In hardhat.config file
 - add your moralis api key (we uses moralis instead of achemy)
 - add your metamask private key
-- add your etherscan api key
-Command for deployment
+- add your etherscan api key  \
+Commands for deployment:
  - npx hardhat run scripts/deploy.ts --network ropsten
 If etherscan failed to verify contract
  - npx hardhat verify --network ropsten DEPLOYED_CONTRACT_ADDRESS
