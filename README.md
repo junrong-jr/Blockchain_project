@@ -73,6 +73,11 @@ Amount of reward = `(gasPrice * txGasUnit) * (rewardPerc % + stakePerc %)` can b
 `rewardPerc %` would be the basic percentage of Gas Fee that Pendel would reward back as Pendel tokens. \
 `stakePerc %` would be the additional percentage added on if the user have stacked back Pendel tokens. 
 
-## If we have more time, what would we do
+## Smart Contract Test Cases
+![](/assets/images/test coverage.png)
 
-deployed contract https://ropsten.etherscan.io/address/0x5D9220389a91cE7cE659E1e90aab1c545D1D718d#code
+## Smart Contract Deployment
+Deployed contract: https://ropsten.etherscan.io/address/0x5D9220389a91cE7cE659E1e90aab1c545D1D718d#code \
+Contract is deployed at ropsten testnet.
+
+## If we have more time, what would we do
