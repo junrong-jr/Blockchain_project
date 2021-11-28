@@ -6,16 +6,18 @@ This project is for the CE/CZ4153 Blockchain Technology course offered during AY
 In Command Prompt, Navgating to the Project folder and install the following:
 1. npm install --save-dev @nomiclabs/hardhat-waffle ethereum-waffle chai @nomiclabs/hardhat-ethers ethers
 2. npm install @openzeppelin/contracts
-3. npm add @uniswap/v3-periphery
-4. npm install --save-dev solidity-coverage
+3. npm install --save-dev solidity-coverage
 
 For testnet deployment, In hardhat.config file
-- add your alchemy api key
+- add your moralis api key (we uses moralis instead of achemy)
 - add your metamask private key
 - add your etherscan api key
+Command for deployment
+ - npx hardhat run scripts/deploy.ts --network ropsten
+If etherscan failed to verify contract
+ - npx hardhat verify --network ropsten DEPLOYED_CONTRACT_ADDRESS
     
 For testing/debugging locally,
- - npx hardhat node --fork [your alchemy api key] //is required so that we can get token address info
  - npx hardhat test --network local //to connect to local node for testing
  - npx hardhat coverage --testfiles "test/registry/*.ts"
 
