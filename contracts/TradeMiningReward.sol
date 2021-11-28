@@ -11,10 +11,10 @@ import "hardhat/console.sol";
 contract TradeMiningReward is Ownable {
     using SafeMath for uint256;
 
-    uint256 private rewardPerc;
-    uint256 public stakeTarget;
-    uint256 public txGasUnit;
-    uint256 public gasFee;
+    uint256 private rewardPerc; //basic reward percentrage
+    uint256 public stakeTarget; //amount to stake to get more reward percentrage
+    uint256 public txGasUnit; // gas
+    uint256 public gasFee; // gas price + gas
     uint256 public timePeriod = 4 seconds; // set to 2 weeks, 4 sec for debugging
 
     event AllocateAmount(uint256 amount);
