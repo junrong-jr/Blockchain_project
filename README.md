@@ -83,3 +83,6 @@ Deployed contract: https://ropsten.etherscan.io/address/0x5D9220389a91cE7cE659E1
 Contract is deployed at ropsten testnet.
 
 ## If we have more time, what would we do
+We would implement a frontend UI using react so that we would be able to utilize web3 APIs. This would open up a lot of possibilities for improvements. For example, getting the latest average gasPrice or converting wei to ether. However, due to the lack of time, we are not able to fully implement the frontend even after attempting to do so. \
+If we could start over, we would really like to try out the recommended solution which revolves around performing Merkle airdrops every 2 weeks to distribute the Pendle tokens. At the 2 weeks epoch mark, a way to verify the trade mining incentive recipient list and recipient amount so that it is possible to calculate the rewards off-chain and deploy a Merkle airdrop contract.
+
